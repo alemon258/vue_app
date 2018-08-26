@@ -58,19 +58,32 @@
                     </div>
                 </div>
                 <div class="music-progress">                   
-                         <!-- 音频播放控件 -->   
-                        <el-row>
-                          
-                        <el-col :span="3"><el-button type="text" @click="startPlayOrPause">{{audio.playing | transPlayPause}}</el-button></el-col>
-                       <el-col :span="12">
+                        <!-- 音频播放控件 -->   
+                    <div style="width:200px">
+                        <el-button  icon="el-icon-arrow-left" @click="playPrev" circle></el-button>
+                        <el-button type="primary" @click="startPlayOrPause" >{{audio.playing | transPlayPause}}</el-button>
+                        <el-button  icon="el-icon-arrow-right" @click="playNext" circle></el-button>
+                    </div>
+                    <div class="slider">
                         <el-slider
                         v-model="sliderTime" 
                         :format-tooltip="formatTooltip"
                         @change="changeSliderTime"
                         :show-tooltip="true"></el-slider>
-                        </el-col>
-                        <el-tag color="rgba(0,0,0,0)" class="time">{{ audio.currentTime | formatSecond}}/{{ audio.maxTime | formatSecond}}</el-tag>
-                        </el-row>
+                    </div>
+                    <el-tag color="rgba(0,0,0,0)" class="time">{{ audio.currentTime | formatSecond}}/{{ audio.maxTime | formatSecond}}</el-tag>
+                    <el-popover
+                    placement="top-start"
+                    trigger="hover">
+                        <el-slider 
+                        v-model="audio.volume" 
+                        @change="changeVolume"
+                        vertical
+                        height="200px"> 
+                        </el-slider>
+                        <el-button slot="reference" icon="el-icon-service"  circle></el-button>
+                    </el-popover>
+                    
                 </div>
             </el-main>
         </el-container>
@@ -108,6 +121,7 @@ function realFormatSecond(second) {
         data() {
             return {
                 musics:[{
+                    index: '0',
                     name: "",
                     singer: '',
                     album: '',
@@ -120,15 +134,29 @@ function realFormatSecond(second) {
                     // 音频当前播放时长
                     currentTime: 0,
                     // 音频最大播放时长
-                    maxTime: 0
+                    maxTime: 0,
+                    //当前播放id
+                    id: 0,
+                    //音量
+                    volume: 50
                 },
             }
         },
 
         methods: {
-            playMusic(row){
+            // rowClass({row, rowIndex}){
+            //     console.log(rowIndex)
+            //     if(rowIndex > 0){
+            //         return 'style-row'
+            //     } else{
+            //         return ''
+            //     }
+            // },
+
+            playMusic(row, event, column){
                 let id = row.id
                 this.$refs.audio.src = "http://music.163.com/song/media/outer/url?id="+ id +".mp3"
+                this.audio.index = row.index
                 this.play()
             },
 
@@ -141,9 +169,33 @@ function realFormatSecond(second) {
                 this.$refs.audio.currentTime = parseInt(index / 100 * this.audio.maxTime)
             },
 
+            changeVolume(index){
+                this.$refs.audio.volume = index/100
+            },
+
                     // 控制音频的播放与暂停
             startPlayOrPause () {
             return this.audio.playing ? this.pause() : this.play()
+            },
+            //播放上一曲
+            playPrev(){
+                if(this.audio.index){
+                    this.audio.index = this.audio.index - 1
+                    let id = this.musics[this.audio.index].id
+                    this.$refs.audio.src = "http://music.163.com/song/media/outer/url?id="+ id +".mp3"
+                    console.log(this.audio.index)
+                    this.play()
+                }
+            },
+            //播放下一曲
+            playNext(){
+                if(this.audio.index != this.musics.length - 1){
+                    this.audio.index = this.audio.index + 1
+                    let id = this.musics[this.audio.index].id
+                    this.$refs.audio.src = "http://music.163.com/song/media/outer/url?id="+ id +".mp3"
+                    console.log(this.audio.index)
+                    this.play()
+                }
             },
             // 播放音频
             play () {
@@ -163,16 +215,16 @@ function realFormatSecond(second) {
             },
             // 当timeupdate事件大概每秒一次，用来更新音频流的当前播放时间
             onTimeupdate(res) {
-            console.log('timeupdate')
-            console.log(res)
-            this.audio.currentTime = parseInt(res.target.currentTime)
-            this.sliderTime = parseInt(this.audio.currentTime / this.audio.maxTime * 100)
-            },
+                this.audio.currentTime = parseInt(res.target.currentTime)
+                this.sliderTime = parseInt(this.audio.currentTime / this.audio.maxTime * 100)
+                if (this.audio.currentTime && this.audio.currentTime == this.audio.maxTime) {
+                    this.playNext()
+                }
+                },
             // 当加载语音流元数据完成后，会触发该事件的回调函数
             // 语音元数据主要是语音的长度之类的数据
             onLoadedmetadata(res) {
-            console.log('loadedmetadata')
-            console.log(res)
+            this.$refs.audio.volume = this.audio.volume / 100
             this.audio.maxTime = parseInt(res.target.duration)
             }
 
@@ -194,15 +246,24 @@ function realFormatSecond(second) {
             .then((res) => {
                 let data = res.data.result.tracks
                 console.log(data)
-                data.forEach(element => {
-                    let music = {name:'', singer:'', id: '', time: '',album: ''}
+                data.forEach((element,index) => {
+                    let music = {name:'', singer:'', id: '', time: '',album: '',index:''}
+                    music.index = index 
                     music.name = element.name
                     music.singer = element.artists[0].name
+                    if (element.artists.length > 1) {
+                        element.artists.forEach((singers, index) => {
+                            if (index > 0){   
+                                music.singer += '/' + singers.name  
+                            }
+                        })
+                    }
                     music.id = element.id
+                    //转换时间
                     let playtime = parseInt(element.bMusic.playTime/1000)
                     let m = parseInt(playtime/60)
                     let s = playtime%60
-                    if (s/10 <= 1){
+                    if (s/10 < 1){
                         s = '0' + s
                     } 
                     music.time = m + ':' + s
@@ -226,7 +287,7 @@ function realFormatSecond(second) {
 </script>
 
 
-<style scoped>
+<style>
 .music-content{
     margin: 0 ;
     padding: 15px;
@@ -241,6 +302,8 @@ function realFormatSecond(second) {
 .time{
     border: 0;
     font-size: 14px;
+    width: 120px;
+    padding: 5px 10px;
 }
 
 .music -body{
@@ -253,5 +316,11 @@ function realFormatSecond(second) {
     margin-bottom: -76px;
 }
 
+.music-progress{
+    display: flex;
+}
 
+.slider{
+    width: calc(100% - 400px)
+}
 </style>
