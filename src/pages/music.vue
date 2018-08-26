@@ -72,6 +72,18 @@
                         :show-tooltip="true"></el-slider>
                     </div>
                     <el-tag color="rgba(0,0,0,0)" class="time">{{ audio.currentTime | formatSecond}}/{{ audio.maxTime | formatSecond}}</el-tag>
+                    <el-popover
+                    placement="top-start"
+                    trigger="hover">
+                        <el-slider 
+                        v-model="audio.volume" 
+                        @change="changeVolume"
+                        vertical
+                        height="200px"> 
+                        </el-slider>
+                        <el-button slot="reference" icon="el-icon-service"  circle></el-button>
+                    </el-popover>
+                    
                 </div>
             </el-main>
         </el-container>
@@ -124,12 +136,23 @@ function realFormatSecond(second) {
                     // 音频最大播放时长
                     maxTime: 0,
                     //当前播放id
-                    id: 0
+                    id: 0,
+                    //音量
+                    volume: 50
                 },
             }
         },
 
         methods: {
+            // rowClass({row, rowIndex}){
+            //     console.log(rowIndex)
+            //     if(rowIndex > 0){
+            //         return 'style-row'
+            //     } else{
+            //         return ''
+            //     }
+            // },
+
             playMusic(row, event, column){
                 let id = row.id
                 this.$refs.audio.src = "http://music.163.com/song/media/outer/url?id="+ id +".mp3"
@@ -144,6 +167,10 @@ function realFormatSecond(second) {
 
             changeSliderTime(index){
                 this.$refs.audio.currentTime = parseInt(index / 100 * this.audio.maxTime)
+            },
+
+            changeVolume(index){
+                this.$refs.audio.volume = index/100
             },
 
                     // 控制音频的播放与暂停
@@ -188,16 +215,16 @@ function realFormatSecond(second) {
             },
             // 当timeupdate事件大概每秒一次，用来更新音频流的当前播放时间
             onTimeupdate(res) {
-            this.audio.currentTime = parseInt(res.target.currentTime)
-            this.sliderTime = parseInt(this.audio.currentTime / this.audio.maxTime * 100)
-             if (this.audio.currentTime && this.audio.currentTime == this.audio.maxTime) {
-                 this.playNext()
-             }
-            },
+                this.audio.currentTime = parseInt(res.target.currentTime)
+                this.sliderTime = parseInt(this.audio.currentTime / this.audio.maxTime * 100)
+                if (this.audio.currentTime && this.audio.currentTime == this.audio.maxTime) {
+                    this.playNext()
+                }
+                },
             // 当加载语音流元数据完成后，会触发该事件的回调函数
             // 语音元数据主要是语音的长度之类的数据
             onLoadedmetadata(res) {
-
+            this.$refs.audio.volume = this.audio.volume / 100
             this.audio.maxTime = parseInt(res.target.duration)
             }
 
@@ -260,7 +287,7 @@ function realFormatSecond(second) {
 </script>
 
 
-<style scoped>
+<style>
 .music-content{
     margin: 0 ;
     padding: 15px;
@@ -275,7 +302,7 @@ function realFormatSecond(second) {
 .time{
     border: 0;
     font-size: 14px;
-    width: 200px;
+    width: 120px;
     padding: 5px 10px;
 }
 

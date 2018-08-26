@@ -43,3 +43,9 @@
         }
     }
 </script>
+
+<style scoped>
+.el-menu{
+    background-color: rgba(0,0,0,0);
+}
+</style>
