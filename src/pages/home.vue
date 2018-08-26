@@ -2,7 +2,7 @@
     <div>
         <el-container>
             <el-main>
-                <h1>test merge</h1>
+                <h1>test merge2</h1>
             </el-main>
         </el-container>
     </div>
