@@ -1,7 +1,7 @@
 <template>
     <div>
         <el-container>
-            <el-main>
+            <el-main class="main">
                 <el-row>
                   <el-button round>正在播放</el-button>
                   <el-button round>我的收藏</el-button>
@@ -310,7 +310,7 @@ function realFormatSecond(second) {
     width: 75%;
 }
 
-.el-main{
+.main{
     padding: 20px 80px 0px;
     height: 100vh;
     margin-bottom: -76px;

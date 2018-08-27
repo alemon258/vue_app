@@ -22,7 +22,6 @@ export default {
 .el-popover{
     min-width: 15px;
     background-color: rgba(0,0,0,0);
-    color: rgba(0,0,0,0);
     border: 0;
     padding: 0;
     text-align: center;
@@ -40,7 +39,7 @@ export default {
 }
 .el-popper[x-placement^=top] .popper__arrow::after{
     border-top-color: rgba(0,0,0,0.05)
-}
+} 
 
 
 </style>
