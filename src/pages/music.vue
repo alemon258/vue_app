@@ -2,15 +2,25 @@
     <div>
         <el-container>
             <el-main class="main">
-                <el-row>
-                  <el-button round>正在播放</el-button>
+                <div class="music-title">
+                    <div style="width:75%;position:relative">
+                  <!-- <el-button round>正在播放</el-button>
                   <el-button round>我的收藏</el-button>
-                  <el-button round>排行榜</el-button>
-                  <el-button round>搜索音乐</el-button>
-                </el-row>
+                  <el-button round>排行榜</el-button> -->
+                    <el-form :inline="true" :model="formInline" class="search">
+                        <el-form-item style="width:100%">
+                            <el-input v-model="formInline.search" @keyup.enter.native="onSearch"  placeholder="搜索" style="width:70%;"></el-input>
+                        </el-form-item>
+                    </el-form>
+                    </div>
+                </div>
                 <div class="music-content">
-                    <template class="music -body">
+                    <template class="music-body">
                         <el-table
+                            v-loading="loading"
+                            element-loading-text="拼命加载中"
+                            element-loading-spinner="el-icon-loading"
+                            element-loading-background="rgba(0, 0, 0, 0.8)"
                             stripe
                             :data="musics"
                             style="width: 100%"
@@ -43,8 +53,7 @@
                         </el-table>
                     </template>
                     <div class="music-info">
-                       <audio 
-                       autoplay
+                       <audio   
                        style="display:none"
                        ref="audio"
                        @pause="onPause"
@@ -53,6 +62,8 @@
                        @loadedmetadata="onLoadedmetadata">
                             <source src="" type="audio/mpeg">
                         </audio>
+                        <h2>{{musics[audio.index].name}}</h2>
+                        <h3>{{audio.lrc}}</h3>
 
                         
                     </div>
@@ -94,6 +105,7 @@
 <script>
 
 import axios from 'axios'
+import qs from 'qs'
 
 const API_POROXY = 'https://bird.ioliu.cn/v1/?url='
 
@@ -128,6 +140,9 @@ function realFormatSecond(second) {
                     time: '',
                     id: ''
                 }],
+                formInline:{
+                    search:''
+                },
                 sliderTime: 0,
                 audio: {
                     playing: false,
@@ -135,11 +150,14 @@ function realFormatSecond(second) {
                     currentTime: 0,
                     // 音频最大播放时长
                     maxTime: 0,
-                    //当前播放id
-                    id: 0,
+                    //当前播放index
+                    index: 0,
                     //音量
-                    volume: 50
+                    volume: 50,
+                    //歌词
+                    lrc:''
                 },
+                loading: true,
             }
         },
 
@@ -157,6 +175,7 @@ function realFormatSecond(second) {
                 let id = row.id
                 this.$refs.audio.src = "http://music.163.com/song/media/outer/url?id="+ id +".mp3"
                 this.audio.index = row.index
+                console.log(this.audio.index)
                 this.play()
             },
 
@@ -217,6 +236,7 @@ function realFormatSecond(second) {
             onTimeupdate(res) {
                 this.audio.currentTime = parseInt(res.target.currentTime)
                 this.sliderTime = parseInt(this.audio.currentTime / this.audio.maxTime * 100)
+                //自动播放
                 if (this.audio.currentTime && this.audio.currentTime == this.audio.maxTime) {
                     this.playNext()
                 }
@@ -226,8 +246,69 @@ function realFormatSecond(second) {
             onLoadedmetadata(res) {
             this.$refs.audio.volume = this.audio.volume / 100
             this.audio.maxTime = parseInt(res.target.duration)
-            }
+            //this.loadLyric(this.musics[this.audio.index].id)
+            },
 
+            //加载歌词
+            loadLyric(id){
+                let url = API_POROXY + 'http://music.163.com/api/song/lyric'
+                axios.get(url,{
+                    params: {id: id,lv: -1, kv: -1, tv: -1}
+                }).then((res) => {
+                    console.log(res.data.lrc.lyric)
+                    this.audio.lrc = res.data.lrc.lyric
+                }).catch((err) => {
+                    console.log(err)
+                })
+            },
+
+            //查询
+            onSearch(){
+                this.loading = true
+                let url = API_POROXY + 'http://music.163.com/api/search/pc'
+                let data = {
+                                        s: this.formInline.search,
+                                        offset: 0,
+                                        limit: 100,
+                                        type: 1
+                                    }
+                axios.post(url, qs.stringify(data),{
+                    headers:{
+                        'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8'
+                    },                  
+                }).then((res) => {
+                    console.log(res.data.result.songs)
+                    this.musics = []
+                    let data = res.data.result.songs
+                    data.forEach((element,index) => {
+                        let music = {name:'', singer:'', id: '', time: '',album: '',index:''}
+                        music.index = index 
+                        music.name = element.name
+                        music.singer = element.artists[0].name
+                        if (element.artists.length > 1) {
+                            element.artists.forEach((singers, index) => {
+                                if (index > 0){   
+                                    music.singer += '/' + singers.name  
+                                }
+                            })
+                        }
+                        music.id = element.id
+                        //转换时间
+                        let playtime = parseInt(element.bMusic.playTime/1000)
+                        let m = parseInt(playtime/60)
+                        let s = playtime%60
+                        if (s/10 < 1){
+                            s = '0' + s
+                        } 
+                        music.time = m + ':' + s
+                        music.album = element.album.name
+                        this.musics.push(music)
+                })
+                this.loading = false
+            }).catch((err) =>{
+                console.log(err)
+            })
+            }
         },
         filters: {
             // 使用组件过滤器来动态改变按钮的显示
@@ -242,10 +323,9 @@ function realFormatSecond(second) {
 
         mounted() {
             let self = this
-            axios.get(API_POROXY + 'http://music.163.com/api/playlist/detail?id=19723756')
+            axios.get(API_POROXY + 'http://music.163.com/api/playlist/detail?id=3779629')
             .then((res) => {
                 let data = res.data.result.tracks
-                console.log(data)
                 data.forEach((element,index) => {
                     let music = {name:'', singer:'', id: '', time: '',album: '',index:''}
                     music.index = index 
@@ -271,7 +351,8 @@ function realFormatSecond(second) {
                     self.musics.push(music)
                 })
                  self.musics.splice(0,1)
-                console.log(self.musics)
+                 self.loading = false
+                 this.$refs.audio.src = "http://music.163.com/song/media/outer/url?id="+ this.musics[this.audio.index].id +".mp3"
             }).catch((err) => {
                 console.log(err)
             })
@@ -306,6 +387,21 @@ function realFormatSecond(second) {
     padding: 5px 10px;
 }
 
+.music-title{
+    display:flex;
+     height:40px; 
+     padding-left: 15px;
+     padding-right: 15px;
+}
+
+.search{
+    position: absolute;
+    left:50%;
+    transform: translateX(-50%);
+    width: 70%;
+    text-align: center;
+}
+
 .music -body{
     width: 75%;
 }
@@ -322,5 +418,13 @@ function realFormatSecond(second) {
 
 .slider{
     width: calc(100% - 400px)
+}
+
+.el-form-item__content{
+    width: 100%;
+}
+.el-input__inner{
+    background-color: rgba(0,0,0,0);
+    color:aquamarine
 }
 </style>
