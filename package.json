@@ -11,10 +11,11 @@
   },
   "dependencies": {
     "axios": "^0.18.0",
+    "better-scroll": "^1.12.6",
     "element-ui": "^2.4.6",
+    "lyric-parser": "git+https://github.com/alemon258/lyric-parser.git",
     "vue": "^2.5.2",
-    "vue-router": "^3.0.1",
-    "vuescroll": "^4.7.6"
+    "vue-router": "^3.0.1"
   },
   "devDependencies": {
     "autoprefixer": "^7.1.2",

@@ -48,7 +48,7 @@
                             <el-table-column
                             prop="time"
                             label="时长"
-                            min-width= 10%>
+                            width= 50>
                             </el-table-column>
                         </el-table>
                     </template>
@@ -63,7 +63,24 @@
                             <source src="" type="audio/mpeg">
                         </audio>
                         <h2>{{musics[audio.index].name}}</h2>
-                        <h3>{{audio.lrc}}</h3>
+                        <Scroll
+                        ref="lyricList"
+                        class="lyric"
+                        :data="currentLyric && currentLyric.lines"
+                        :mouseWheel="true">
+                        <div>
+                            <ul class="content" v-if="currentLyric">
+                                    <p ref="lyricLine" 
+                                    class="text"
+                                    :class="{'current': currentLineNum === index}"
+                                    v-for="(line, index) in currentLyric.lines"
+                                    :key="index">{{line.txt}}
+                                    </p>
+                            </ul>
+                        </div>
+                        </Scroll>
+                            
+
 
                         
                     </div>
@@ -106,6 +123,10 @@
 
 import axios from 'axios'
 import qs from 'qs'
+//引入歌词解析
+import Lyric from 'lyric-parser'
+//歌词滚动
+import Scroll from '../components/scroll'
 
 const API_POROXY = 'https://bird.ioliu.cn/v1/?url='
 
@@ -143,7 +164,12 @@ function realFormatSecond(second) {
                 formInline:{
                     search:''
                 },
+                //歌曲是否改变
+                isChange: false,
+                //当前高亮歌词
+                currentLineNum: 0,  
                 sliderTime: 0,
+                currentLyric: null,
                 audio: {
                     playing: false,
                     // 音频当前播放时长
@@ -161,6 +187,10 @@ function realFormatSecond(second) {
             }
         },
 
+        components: {
+            Scroll
+        },
+
         methods: {
             // rowClass({row, rowIndex}){
             //     console.log(rowIndex)
@@ -175,8 +205,7 @@ function realFormatSecond(second) {
                 let id = row.id
                 this.$refs.audio.src = "http://music.163.com/song/media/outer/url?id="+ id +".mp3"
                 this.audio.index = row.index
-                console.log(this.audio.index)
-                this.play()
+                this.isChange = true
             },
 
             formatTooltip(index = 0){
@@ -186,6 +215,11 @@ function realFormatSecond(second) {
 
             changeSliderTime(index){
                 this.$refs.audio.currentTime = parseInt(index / 100 * this.audio.maxTime)
+                //设置歌词播放时间
+                this.currentLyric.seek(this.$refs.audio.currentTime*1000)
+                if(!this.audio.playing){
+                    this.currentLyric.togglePlay()
+                }
             },
 
             changeVolume(index){
@@ -202,8 +236,7 @@ function realFormatSecond(second) {
                     this.audio.index = this.audio.index - 1
                     let id = this.musics[this.audio.index].id
                     this.$refs.audio.src = "http://music.163.com/song/media/outer/url?id="+ id +".mp3"
-                    console.log(this.audio.index)
-                    this.play()
+                    this.isChange = true
                 }
             },
             //播放下一曲
@@ -212,8 +245,7 @@ function realFormatSecond(second) {
                     this.audio.index = this.audio.index + 1
                     let id = this.musics[this.audio.index].id
                     this.$refs.audio.src = "http://music.163.com/song/media/outer/url?id="+ id +".mp3"
-                    console.log(this.audio.index)
-                    this.play()
+                    this.isChange = true
                 }
             },
             // 播放音频
@@ -227,10 +259,12 @@ function realFormatSecond(second) {
             // 当音频播放
             onPlay () {
             this.audio.playing = true
+            this.currentLyric.togglePlay()                
             },
             // 当音频暂停
             onPause () {
             this.audio.playing = false
+            this.currentLyric.togglePlay()
             },
             // 当timeupdate事件大概每秒一次，用来更新音频流的当前播放时间
             onTimeupdate(res) {
@@ -246,7 +280,11 @@ function realFormatSecond(second) {
             onLoadedmetadata(res) {
             this.$refs.audio.volume = this.audio.volume / 100
             this.audio.maxTime = parseInt(res.target.duration)
-            //this.loadLyric(this.musics[this.audio.index].id)
+            //停止上一首歌词
+            if(this.isChange){
+                this.currentLyric.stop()
+            }
+            this.loadLyric(this.musics[this.audio.index].id)
             },
 
             //加载歌词
@@ -255,11 +293,38 @@ function realFormatSecond(second) {
                 axios.get(url,{
                     params: {id: id,lv: -1, kv: -1, tv: -1}
                 }).then((res) => {
-                    console.log(res.data.lrc.lyric)
-                    this.audio.lrc = res.data.lrc.lyric
+                    let lrc = res.data.lrc.lyric
+                    this.currentLyric = new Lyric(lrc, this.handleLyric)
+                    this.$nextTick(()=>{
+                        this.lyricRefresh()
+                    })
+                    //刚开始不播放
+                    if(this.isChange){
+                        this.play()
+                    }
+                    //this.audio.lrc = res.data.lrc.lyric
                 }).catch((err) => {
                     console.log(err)
                 })
+            },
+            //歌词刷新
+            lyricRefresh(){
+                let lineEl = this.$refs.lyricLine[0]
+                this.$refs.lyricList.scrollToElement(lineEl, 1000)
+            },
+
+            handleLyric({lineNum, txt}){
+                this.currentLineNum = lineNum
+
+                if (lineNum > 5) {
+                    let lineEl = this.$refs.lyricLine[lineNum - 5]
+                    // 结合better-scroll，滚动歌词
+                    this.$refs.lyricList.scrollToElement(lineEl, 1000)
+                    } else {
+                        let lineEl2 = this.$refs.lyricLine[0]
+                        this.$refs.lyricList.scrollToElement(lineEl2,  1000)
+                    }
+
             },
 
             //查询
@@ -277,7 +342,6 @@ function realFormatSecond(second) {
                         'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8'
                     },                  
                 }).then((res) => {
-                    console.log(res.data.result.songs)
                     this.musics = []
                     let data = res.data.result.songs
                     data.forEach((element,index) => {
@@ -371,13 +435,32 @@ function realFormatSecond(second) {
 <style>
 .music-content{
     margin: 0 ;
-    padding: 15px;
+    padding: 15px 0 15px 0;
     height: calc(100% - 200px);
     display: flex;
 }
 
 .music-info{
     width: 25%;
+    text-align: center;
+    position: relative;
+}
+
+.current{
+    color: aqua;
+}
+
+.lyric{
+    height: 400px;
+    overflow: hidden;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+}
+
+.content{
+    padding: 0;
 }
 
 .time{
@@ -407,7 +490,7 @@ function realFormatSecond(second) {
 }
 
 .main{
-    padding: 20px 80px 0px;
+    padding: 20px 0px 0px 80px;
     height: 100vh;
     margin-bottom: -76px;
 }
