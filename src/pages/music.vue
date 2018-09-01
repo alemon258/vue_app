@@ -64,6 +64,7 @@
                         </audio>
                         <h2>{{musics[audio.index].name}}</h2>
                         <Scroll
+                        id="inner"
                         ref="lyricList"
                         class="lyric"
                         :data="currentLyric && currentLyric.lines"
@@ -315,16 +316,26 @@ function realFormatSecond(second) {
 
             handleLyric({lineNum, txt}){
                 this.currentLineNum = lineNum
-
-                if (lineNum > 5) {
-                    let lineEl = this.$refs.lyricLine[lineNum - 5]
+                if(document.getElementById("inner").offsetHeight < 300){
+                    if (lineNum > 3) {
+                    let lineEl = this.$refs.lyricLine[lineNum - 3]
                     // 结合better-scroll，滚动歌词
                     this.$refs.lyricList.scrollToElement(lineEl, 1000)
                     } else {
                         let lineEl2 = this.$refs.lyricLine[0]
                         this.$refs.lyricList.scrollToElement(lineEl2,  1000)
                     }
-
+                }else{
+                    if (lineNum > 4) {
+                    let lineEl = this.$refs.lyricLine[lineNum - 4]
+                    // 结合better-scroll，滚动歌词
+                    this.$refs.lyricList.scrollToElement(lineEl, 1000)
+                    } else {
+                        let lineEl2 = this.$refs.lyricLine[0]
+                        this.$refs.lyricList.scrollToElement(lineEl2,  1000)
+                    }
+                }
+                
             },
 
             //查询
@@ -451,7 +462,7 @@ function realFormatSecond(second) {
 }
 
 .lyric{
-    height: 400px;
+    height:50%;
     overflow: hidden;
     position: absolute;
     top: 50%;
