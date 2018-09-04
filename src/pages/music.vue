@@ -59,7 +59,8 @@
                        @pause="onPause"
                        @play="onPlay"
                        @timeupdate="onTimeupdate" 
-                       @loadedmetadata="onLoadedmetadata">
+                       @loadedmetadata="onLoadedmetadata"
+                       @error="onLoadError">
                             <source src="" type="audio/mpeg">
                         </audio>
                         <h2>{{musics[audio.index].name}}</h2>
@@ -110,9 +111,9 @@
                         vertical
                         height="200px"> 
                         </el-slider>
-                        <el-button slot="reference" icon="el-icon-service"  circle></el-button>
+                        <el-button slot="reference" icon="el-icon-service"  circle style="margin-right:50px"></el-button>
                     </el-popover>
-                    
+                    <el-button :icon="playSortIcon" circle @click="changePlaySort"></el-button>
                 </div>
             </el-main>
         </el-container>
@@ -165,6 +166,10 @@ function realFormatSecond(second) {
                 formInline:{
                     search:''
                 },
+                //歌曲播放模式，默认顺序播放
+                playSort: 'repeat-all',
+                //播放模式图标
+                playSortIcon: 'el-icon-d-arrow-right',
                 //歌曲是否改变
                 isChange: false,
                 //当前高亮歌词
@@ -201,6 +206,24 @@ function realFormatSecond(second) {
             //         return ''
             //     }
             // },
+
+            //歌曲不能播放，播放下一曲
+            onLoadError(){
+               this.playNext()
+            },
+            //改变播放顺序
+            changePlaySort(){
+                if(this.playSort == 'repeat-all'){
+                    this.playSort = 'shuffle'
+                    this.playSortIcon = 'el-icon-question'
+                } else if(this.playSort == 'shuffle'){
+                    this.playSort = 'repeat-one'
+                    this.playSortIcon = 'el-icon-refresh'
+                } else{
+                    this.playSort = 'repeat-all'
+                    this.playSortIcon = 'el-icon-d-arrow-right'
+                }
+            },
 
             playMusic(row, event, column){
                 let id = row.id
@@ -273,7 +296,18 @@ function realFormatSecond(second) {
                 this.sliderTime = parseInt(this.audio.currentTime / this.audio.maxTime * 100)
                 //自动播放
                 if (this.audio.currentTime && this.audio.currentTime == this.audio.maxTime) {
-                    this.playNext()
+                    if(this.playSort == 'repeat-all'){
+                        this.playNext()
+                    } else if(this.playSort == 'repeat-one'){
+                        this.play()
+                        this.currentLyric.play()
+                    } else if(this.playSort == 'shuffle') {
+                        this.audio.index =parseInt( Math.random() * this.musics.length )
+                        let id = this.musics[this.audio.index].id
+                        this.$refs.audio.src = "http://music.163.com/song/media/outer/url?id="+ id +".mp3"
+                        this.isChange = true
+                    }
+
                 }
                 },
             // 当加载语音流元数据完成后，会触发该事件的回调函数
@@ -305,7 +339,16 @@ function realFormatSecond(second) {
                     }
                     //this.audio.lrc = res.data.lrc.lyric
                 }).catch((err) => {
-                    console.log(err)
+                    //没有歌词
+                    let lrc = ''
+                    this.currentLyric = new Lyric(lrc, this.handleLyric)
+                    this.$nextTick(()=>{
+                        this.lyricRefresh()
+                    })
+                    //刚开始不播放
+                    if(this.isChange){
+                        this.play()
+                    }
                 })
             },
             //歌词刷新
@@ -511,7 +554,7 @@ function realFormatSecond(second) {
 }
 
 .slider{
-    width: calc(100% - 400px)
+    width: calc(100% - 500px)
 }
 
 .el-form-item__content{
