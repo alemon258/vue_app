@@ -25,7 +25,7 @@
                             :data="musics"
                             style="width: 100%"
                             height= '100%'
-                            @row-click="playMusic">
+                            @row-click="clickPlayMusic">
                             <el-table-column
                             type='index'
                             width= "50">
@@ -224,12 +224,16 @@ function realFormatSecond(second) {
                     this.playSortIcon = 'el-icon-d-arrow-right'
                 }
             },
-
-            playMusic(row, event, column){
-                let id = row.id
+            //播放音乐
+            playMusic(){
+                let id = this.musics[this.audio.index].id
                 this.$refs.audio.src = "http://music.163.com/song/media/outer/url?id="+ id +".mp3"
-                this.audio.index = row.index
                 this.isChange = true
+            },
+            //点击列表播放
+            clickPlayMusic(row, event, column){
+                this.audio.index = row.index
+                this.playMusic()
             },
 
             formatTooltip(index = 0){
@@ -256,20 +260,25 @@ function realFormatSecond(second) {
             },
             //播放上一曲
             playPrev(){
-                if(this.audio.index){
+                if(this.playSort == 'shuffle'){
+                    this.audio.index =parseInt( Math.random() * this.musics.length )
+                    this.playMusic()
+                } else if(this.audio.index){
                     this.audio.index = this.audio.index - 1
-                    let id = this.musics[this.audio.index].id
-                    this.$refs.audio.src = "http://music.163.com/song/media/outer/url?id="+ id +".mp3"
-                    this.isChange = true
+                    this.playMusic()
                 }
             },
             //播放下一曲
             playNext(){
-                if(this.audio.index != this.musics.length - 1){
+                if(this.playSort == 'shuffle'){
+                    this.audio.index =parseInt( Math.random() * this.musics.length )
+                    this.playMusic()
+                }else if (this.audio.index == this.musics.length - 1){
+                    this.audio.index = 0
+                    this.playMusic()
+                }else{
                     this.audio.index = this.audio.index + 1
-                    let id = this.musics[this.audio.index].id
-                    this.$refs.audio.src = "http://music.163.com/song/media/outer/url?id="+ id +".mp3"
-                    this.isChange = true
+                    this.playMusic()
                 }
             },
             // 播放音频
@@ -303,9 +312,7 @@ function realFormatSecond(second) {
                         this.currentLyric.play()
                     } else if(this.playSort == 'shuffle') {
                         this.audio.index =parseInt( Math.random() * this.musics.length )
-                        let id = this.musics[this.audio.index].id
-                        this.$refs.audio.src = "http://music.163.com/song/media/outer/url?id="+ id +".mp3"
-                        this.isChange = true
+                        this.playMusic()
                     }
 
                 }
@@ -359,6 +366,7 @@ function realFormatSecond(second) {
 
             handleLyric({lineNum, txt}){
                 this.currentLineNum = lineNum
+                //判断歌词面板的高度
                 if(document.getElementById("inner").offsetHeight < 300){
                     if (lineNum > 3) {
                     let lineEl = this.$refs.lyricLine[lineNum - 3]
