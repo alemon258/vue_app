@@ -17,13 +17,15 @@
                 <div class="music-content">
                     <template class="music-body">
                         <el-table
+                            ref="table"
                             v-loading="loading"
                             element-loading-text="拼命加载中"
                             element-loading-spinner="el-icon-loading"
                             element-loading-background="rgba(0, 0, 0, 0.8)"
                             stripe
+                            :highlight-current-row = true
                             :data="musics"
-                            style="width: 100%"
+                            style="width: 100%; color:rgb(213, 252, 255);"
                             height= '100%'
                             @row-click="clickPlayMusic">
                             <el-table-column
@@ -52,6 +54,9 @@
                             </el-table-column>
                         </el-table>
                     </template>
+                    
+
+                    <!-- music lyric -->
                     <div class="music-info">
                        <audio   
                        style="display:none"
@@ -198,14 +203,6 @@ function realFormatSecond(second) {
         },
 
         methods: {
-            // rowClass({row, rowIndex}){
-            //     console.log(rowIndex)
-            //     if(rowIndex > 0){
-            //         return 'style-row'
-            //     } else{
-            //         return ''
-            //     }
-            // },
 
             //歌曲不能播放，播放下一曲
             onLoadError(){
@@ -226,6 +223,8 @@ function realFormatSecond(second) {
             },
             //播放音乐
             playMusic(){
+                //切换高亮行
+                this.$refs.table.setCurrentRow(this.musics[this.audio.index])
                 let id = this.musics[this.audio.index].id
                 this.$refs.audio.src = "http://music.163.com/song/media/outer/url?id="+ id +".mp3"
                 this.isChange = true
@@ -482,11 +481,26 @@ function realFormatSecond(second) {
             }).catch((err) => {
                 console.log(err)
             })
-        }
- 
-    }
 
-    //鼠标划入滚动条展现，鼠标划出滚动条隐藏
+            //加载滚动条，但是不显示
+            document.getElementsByClassName('el-table__body-wrapper')[0].classList.add('scrollbarHide')
+
+            var timeout = false
+            //绑定滚动事件
+            document.getElementsByClassName('el-table__body-wrapper')[0].onscroll = () => {
+                document.getElementsByClassName('el-table__body-wrapper')[0].classList.add('scrollbarShow')
+                
+                if (timeout){
+                    clearTimeout(timeout)
+                    }
+                timeout = setTimeout(() => {
+                    document.getElementsByClassName('el-table__body-wrapper')[0].classList.remove('scrollbarShow')
+                }, 500) 
+                 
+            }
+        },
+         
+    }
 
 
 
@@ -495,6 +509,49 @@ function realFormatSecond(second) {
 
 
 <style>
+
+/* ::-webkit-scrollbar {width:7px; height:10px; background-color:transparent;} 定义滚动条高宽及背景 高宽分别对应横竖滚动条的尺寸 */
+/* ::-webkit-scrollbar-track {background-color:#f0f6ff;  } 定义滚动条轨道 内阴影+圆角 */
+/* ::-webkit-scrollbar-thumb {background-color:#73abb1; border-radius:6px;} 定义滑块 内阴影+圆角 */
+.scrollbarHide::-webkit-scrollbar{display: none;}
+.scrollbarShow::-webkit-scrollbar{display: block;}
+.scrollbarShow::-webkit-scrollbar{
+    width:7px; height:10px;
+    background-color:rgba(0,0,0,0.1);
+    border-radius:6px;
+}
+
+.scrollbarShow::-webkit-scrollbar-thumb{
+    background-color:#73abb1;
+    border-radius:6px;
+}
+
+
+
+.el-table{
+    background-color: rgba(0,0,0,0);
+}
+
+.el-table tr, .el-table th{
+    background-color: rgba(0,0,0,0);
+}
+
+.el-table--striped .el-table__body tr.el-table__row--striped td{
+    background-color: rgba(0,0,0,0);
+}
+
+.el-table--striped .el-table__body tr.el-table__row--striped.current-row td,.el-table__body tr.current-row>td{
+    background-color: rgba(11, 22,33,.5)
+}
+
+.el-table--enable-row-hover .el-table__body tr:hover>td{
+    background-color: rgba(11, 22,33,.5)
+}
+
+.el-table td{
+    border: 0;
+}
+
 .music-content{
     margin: 0 ;
     padding: 15px 0 15px 0;
